@@ -1,12 +1,24 @@
 # Validation and measured limits
 
-This report describes the current release candidate. Distribution/name availability is a separate decision.
+This report separates the first hosted qualification from the preserved local validation that preceded publication. The local measurements and frozen distribution documents remain historical snapshots; they have not been relabeled as new local runs.
 
-## Executed checks
+## First hosted qualification
 
-- The source suite runs 68 tests on CPython 3.12.14 and 3.13.5: 67 pass and one installed-environment fixture is intentionally skipped unless its provisioned interpreter list is supplied. With that list supplied, all 68 pass without skips; the fixture exercises all three clean-install environments.
+On 2026-10-09, [GitHub Actions run 37931505912](https://github.com/loaff123/dyadbridge/actions/runs/37931505912) passed all five jobs for [source commit a5d3bd1883d4016a3c1f1a1e3859197d032871ef](https://github.com/loaff123/dyadbridge/tree/a5d3bd1883d4016a3c1f1a1e3859197d032871ef):
+
+- CPython 3.11.17, 3.12.15, 3.13.16 and 3.14.8 each passed all 68 tests with zero skips.
+- Each runtime built a wheel and source distribution using the declared setuptools 77.0.3 floor, checked all 49 public source files against the archives, and installed both archives into separate clean environments: eight clean installs in total. Installed API, complete JSONL readback, module/console CLI, bundled assets and absent scientific-runtime-dependency checks passed.
+- The separate CPython 3.12.15 oracle job passed all eight independent high-precision cases, including the dense 64-state case. These numerical cross-checks supplement the exact rational argument; they are not proofs.
+
+The hosted jobs built fresh archives from that exact source commit. They did not replace the previously delivered frozen wheel or source distribution, whose bytes and local qualification remain unchanged. The runtime/scientific implementation and resource policy were unchanged by publication. Registry publication is not claimed.
+
+## Preserved local checks
+
+The following checks and the remaining measurements in this report describe the pre-publication local qualification. [validation-results.json](validation-results.json), including its local runtime coverage and source hashes, is retained as that historical evidence.
+
+- The recorded source suite ran 68 tests on CPython 3.12.14 and 3.13.5: 67 passed and one installed-environment fixture was intentionally skipped unless its provisioned interpreter list was supplied. With that list supplied, all 68 passed without skips; the fixture exercised all three local clean-install environments.
 - Eight independent analytical/high-precision cases passed at 180 or more decimal digits, with an additional precision check: HKY, rare two-state, birth depths 20/60, periodic two-state, a nonreversible cycle, and dense 8/64-state examples. These numerical checks do not replace the exact rational truncation argument.
-- Clean wheel installs on CPython 3.12/3.13 and a clean source-distribution install on 3.12 passed API, complete JSONL readback, module/console CLI, bundled example and absent scientific-runtime-dependency checks. CPython 3.11/3.14 are unverified.
+- Clean wheel installs on CPython 3.12/3.13 and a clean source-distribution install on 3.12 passed API, complete JSONL readback, module/console CLI, bundled example and absent scientific-runtime-dependency checks. CPython 3.11/3.14 were not part of that local qualification; their first hosted verification is recorded above.
 - A 50-history, 106-record replay matched across tested runtimes after removing only runtime provenance.
 - The declared setuptools build floor is 77.0.3, tested by actual wheel/sdist builds and an isolated sdist installation. The earlier 68.0.0 floor rejected the SPDX license string; that failure and the build-floor regression were reproduced before correction. This build-only requirement adds no runtime dependency. See the [setuptools SPDX migration guidance](https://setuptools.pypa.io/en/stable/userguide/license_migration.html) and [PyPA pyproject guide](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/).
 - The pinned, unmodified mbridges full-path sampler completed 1,024 trajectories for each of two ordinary models with zero failures or captured warnings. Each model was compared with 4,096 dyadbridge histories; details follow below.
@@ -101,6 +113,6 @@ After the final reader-work repair, each required dense 64-state mu=4, rare 10^-
 
 The independent review also found a deliberately difficult coprime/Fibonacci model whose producer originally passed but whose reader exceeded its normalization-work ceiling. The producer now replays canonical reader ingestion before creating the RNG; that unsupported case refuses at reader-model-preflight. All four required useful cases still complete under unchanged ceilings. The 40-case matrix remains 36 successful cases and 4 explicit refusals after this repair.
 
-Machine-readable final numerical results, explicit refusal reasons and tested source hashes are in [validation-results.json](validation-results.json). Final archive digests and clean-install verification accompany release delivery.
+Machine-readable local numerical results, explicit refusal reasons and tested source hashes are preserved in [validation-results.json](validation-results.json). Frozen archive digests and local clean-install verification accompany release delivery; the first hosted qualification is recorded separately above.
 
 A final raw-ingestion regression covers a depth-16 input just below 1MiB whose nested containers alone would exceed the 64MiB logical ceiling before unknown-field rejection. A decoded-shape guard now refuses before json.loads, including a malformed trailing-byte variant. Independent shape-envelope checks and overlapping reader-object tests support the targeted accounting fixes; this remains conservative software accounting rather than a formal OS-memory proof.
