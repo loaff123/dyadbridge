@@ -1,0 +1,1 @@
+{"rates":[{"from":"S0","rate":"1","to":"S1"},{"from":"S1","rate":"1","to":"S2"},{"from":"S2","rate":"1","to":"S3"},{"from":"S3","rate":"1","to":"S4"},{"from":"S4","rate":"1","to":"S5"}],"schema":"dyadbridge.model.v1","states":["S0","S1","S2","S3","S4","S5"]}

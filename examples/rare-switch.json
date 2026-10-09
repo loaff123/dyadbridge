@@ -1,0 +1,1 @@
+{"rates":[{"from":"off","rate":"1/1000000000000000000","to":"on"},{"from":"on","rate":"1","to":"off"}],"schema":"dyadbridge.model.v1","states":["off","on"]}

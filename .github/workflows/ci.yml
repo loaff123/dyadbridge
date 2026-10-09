@@ -1,0 +1,110 @@
+name: dyadbridge checks
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+
+jobs:
+  distributions-and-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: false
+      - name: Build wheel and sdist with the declared backend floor
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/builder"
+          python -m pip download --index-url https://pypi.org/simple --only-binary=:all: \
+            --no-deps --dest "$RUNNER_TEMP/build-wheelhouse" \
+            setuptools==77.0.3 wheel==0.48.0 packaging==26.2
+          "$RUNNER_TEMP/builder/bin/python" -m pip install --no-index \
+            --find-links "$RUNNER_TEMP/build-wheelhouse" \
+            setuptools==77.0.3 wheel==0.48.0 packaging==26.2
+          "$RUNNER_TEMP/builder/bin/python" - <<'PY'
+          import os
+          from pathlib import Path
+          import setuptools
+          import setuptools.build_meta as backend
+          assert setuptools.__version__ == '77.0.3'
+          output = Path(os.environ['RUNNER_TEMP']) / 'dist'
+          output.mkdir()
+          backend.build_wheel(str(output))
+          backend.build_sdist(str(output))
+          PY
+          python validation/release_check.py \
+            --wheel "$RUNNER_TEMP"/dist/*.whl \
+            --sdist "$RUNNER_TEMP"/dist/*.tar.gz \
+            --output "$RUNNER_TEMP/archive-check.json"
+      - name: Install both archives into separate clean environments
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/wheel-env"
+          python -m venv "$RUNNER_TEMP/sdist-env"
+          "$RUNNER_TEMP/wheel-env/bin/python" -m pip install --no-deps --no-index \
+            "$RUNNER_TEMP"/dist/*.whl
+          "$RUNNER_TEMP/sdist-env/bin/python" -m pip install --no-deps --no-index \
+            --no-cache-dir --find-links "$RUNNER_TEMP/build-wheelhouse" \
+            "$RUNNER_TEMP"/dist/*.tar.gz
+      - name: Run the aggregate and require zero skips
+        run: |
+          set -euo pipefail
+          export PYTHONPATH="$GITHUB_WORKSPACE/src"
+          python - <<'PY'
+          import json, os, sys, unittest
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          os.environ['DYADBRIDGE_INSTALLED_PYTHONS'] = json.dumps([
+              str(temp / 'wheel-env/bin/python'),
+              str(temp / 'sdist-env/bin/python'),
+          ])
+          suite = unittest.defaultTestLoader.discover('tests')
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if not result.wasSuccessful() or result.skipped or not result.testsRun:
+              sys.exit(1)
+          PY
+
+  scientific-oracles:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+          allow-prereleases: false
+      - name: Run the eight independent high-precision cross-checks
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/oracle-env"
+          "$RUNNER_TEMP/oracle-env/bin/python" -m pip install \
+            --index-url https://pypi.org/simple mpmath==1.3.0
+          PYTHONPATH="$GITHUB_WORKSPACE/src" "$RUNNER_TEMP/oracle-env/bin/python" \
+            validation/analytical.py --output "$RUNNER_TEMP/analytical.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          result = json.loads((Path(os.environ['RUNNER_TEMP']) / 'analytical.json').read_text())
+          assert result['status'] == 'passed' and len(result['cases']) == 8
+          print('All eight high-precision checks passed; these are numerical cross-checks, not proofs.')
+          PY

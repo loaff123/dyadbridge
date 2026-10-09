@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77.0.3", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyadbridge"
+version = "0.1.0"
+description = "Bounded exact-arithmetic endpoint-conditioned quantized Markov event histories"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+dependencies = []
+license = "MIT"
+
+[project.scripts]
+dyadbridge = "dyadbridge.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dyadbridge = ["data/*.json"]
